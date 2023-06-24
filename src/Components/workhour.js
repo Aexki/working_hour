@@ -1,8 +1,9 @@
-import React, { useState, useRef, useCallback,useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "./Workhour.css";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
+import { GridApi } from "ag-grid-community";
 const initObj = {
   regionCode: "ECA",
   customerNumber: "0018527",
@@ -79,22 +80,21 @@ function Workhour() {
       field: "toAM",
       headerName: "AM To",
       editable: true,
-      // checkboxSelection: true,
     },
-      {
-      headerName:"closed",
-      checkboxSelection: true
-  },
+    {
+      headerName: "closed",
+      checkboxSelection: true,
+    },
     { field: "fromPM", headerName: "PM FROM", editable: true },
     { field: "toPM", headerName: "PM FROM", editable: true },
   ]);
-  const [rowData,setRowData]=useState();
+  let [rowData, setRowData] = useState();
 
-  columnDefs.checkboxSelection = true;
+  // columnDefs.checkboxSelection = true;
   // useEffect(() => {
-  //   fetch('https://address of your url')
+  //   axios.get('https://address of my url')
   //   .then(result => result.json())
-  //   .then(rowData => setRowData(rowData))
+  //   .then(apiResult => setApiresult(apiResult))
   // }, []);
   var daysOfWeek = [
     "Sunday",
@@ -112,7 +112,7 @@ function Workhour() {
     demoObj.openingHours[i].day = day;
   }
   let demoData = [...demoObj.openingHours];
-  
+
   demoData = demoData.map((ele) => {
     if (ele.closedAM === null) {
       ele.closedAM = "00:00:00";
@@ -134,58 +134,65 @@ function Workhour() {
     }
     return ele;
   });
-  useEffect(()=>{
-		setRowData(demoData);
-	}, [])
-  const onSelectionChanged = useCallback((event) => {
-    const selectedRows = gridRef.current.api.getSelectedRows();
-    console.log(selectedRows);
-    // const obj=selectedRows[0];
-    // let rowNode = gridRef.current.api.getRowNode(obj.day);
-    console.log(gridRef.current.api);
-    // let rowNode = gridRef.current;
-// console.log(rowNode);
-  },[]);
+  useEffect(() => {
+    setRowData(demoData);
+  }, []);
 
- const  setData = (data) =>{
-console.log(data);
-  }
+  const onSelectionChanged = (event) => {
+    const selectedRows = gridRef.current.api.getSelectedNodes();
 
-  const onRowValueChanged = useCallback(
-    (event) => {
-      console.log('called')
-      var data = event.data;
-      for (let i = 0; i < demoObj.openingHours.length; i++) {
-        let obj = demoObj.openingHours[i];
-        if (obj.day === data.day) {
-          obj = { ...data };
-        }
+    const UpdatedRowData = { ...selectedRows[0].data, toAM: "00:00:00" };
+    selectedRows[0].setData(UpdatedRowData);
+    if (rowData) {
+      rowData = [
+        ...rowData?.filter((item) => {
+          return item.day !== UpdatedRowData.day;
+        }),
+        UpdatedRowData,
+      ];
+    }
+    console.log("rowData", rowData);
+  };
+
+  const onRowValueChanged = (event) => {
+    console.log("called");
+    var data = event.data;
+
+    for (let i = 0; i < demoObj.openingHours.length; i++) {
+      let obj = demoObj.openingHours[i];
+      if (obj.day === data.day) {
+        obj = { ...data };
       }
-      console.log(demoObj);
-    },
-    [demoObj]
-  );
+    }
+    console.log(demoObj);
+  };
+  const startEditingCell = (params) => {
+    console.log(params);
+  };
+
+  const handleSubmit = () => {
+    console.log("gridRef", gridRef.current.api.getNodes());
+    console.log(rowData);
+
+    // final api post call
+    // axis.post('https://address of my url',rowData);
+  };
 
   return (
     <>
-     <div className="ag-theme-alpine" style={{ height: 500, width: 800 }}>
-      <AgGridReact
-        checkboxSelection={true}
-       onSelectionChanged={onSelectionChanged}
-        onRowValueChanged={onRowValueChanged}
-        ref={gridRef}
-        // getRowId={getRowId}
-        setData={setData}
-        rowData={rowData}
-        columnDefs={columnDefs}
-      ></AgGridReact>
-
-    </div>
-    <button>
-      submit
-    </button>
+      <div className="ag-theme-alpine" style={{ height: 500, width: 800 }}>
+        <AgGridReact
+          checkboxSelection={true}
+          onSelectionChanged={onSelectionChanged}
+          onRowValueChanged={onRowValueChanged}
+          startEditingCell={startEditingCell}
+          ref={gridRef}
+          rowData={rowData}
+          columnDefs={columnDefs}
+        ></AgGridReact>
+      </div>
+      <button onClick={handleSubmit}>submit</button>
     </>
-   
   );
 }
 
